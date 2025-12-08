@@ -5,8 +5,11 @@ import { GenerationSettings } from "../types";
 export const MODEL_NAME = 'gemini-3-pro-image-preview';
 
 export const generateImageFromPrompt = async (prompt: string, settings: GenerationSettings): Promise<string> => {
+  // Get API key from environment (.env.local) or fall back to what's set by Google AI Studio
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY;
+  
   // CRITICAL: Always create a new instance to pick up the latest selected API Key from the environment
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
     const imageConfig: any = {

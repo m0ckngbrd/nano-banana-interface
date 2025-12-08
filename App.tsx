@@ -6,6 +6,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { Button } from './components/Button';
 import { HistoryItem, PromptTemplate, GenerationSettings } from './types';
 import { generateImageFromPrompt, MODEL_NAME } from './services/geminiService';
+import { storage, isRunningInAIStudio } from './services/storageService';
 import { Menu, Send, Sparkles, Download, Maximize2, Share2, Bookmark, Settings } from 'lucide-react';
 
 const LOCAL_STORAGE_HISTORY_KEY = 'banana_pro_history';
@@ -32,26 +33,32 @@ const App: React.FC = () => {
 
   // Load data on mount
   useEffect(() => {
-    const savedHistory = localStorage.getItem(LOCAL_STORAGE_HISTORY_KEY);
-    const savedTemplates = localStorage.getItem(LOCAL_STORAGE_TEMPLATES_KEY);
-    const savedSettings = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
+    const loadData = async () => {
+      const savedHistory = await storage.getItem(LOCAL_STORAGE_HISTORY_KEY);
+      const savedTemplates = await storage.getItem(LOCAL_STORAGE_TEMPLATES_KEY);
+      const savedSettings = await storage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
+      
+      if (savedHistory) setHistory(JSON.parse(savedHistory));
+      if (savedTemplates) setTemplates(JSON.parse(savedTemplates));
+      if (savedSettings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
+    };
+    loadData();
     
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
-    if (savedTemplates) setTemplates(JSON.parse(savedTemplates));
-    if (savedSettings) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
+    // Log environment info
+    console.log(`Running in ${isRunningInAIStudio() ? 'AI Studio' : 'local development'} mode`);
   }, []);
 
   // Persist data
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_HISTORY_KEY, JSON.stringify(history));
+    storage.setItem(LOCAL_STORAGE_HISTORY_KEY, JSON.stringify(history));
   }, [history]);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_TEMPLATES_KEY, JSON.stringify(templates));
+    storage.setItem(LOCAL_STORAGE_TEMPLATES_KEY, JSON.stringify(templates));
   }, [templates]);
 
   useEffect(() => {
-    localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(settings));
+    storage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(settings));
   }, [settings]);
 
   const activeItem = history.find(h => h.id === currentItemId) || null;

@@ -15,6 +15,15 @@ View your app in AI Studio: https://ai.studio/apps/drive/1h3Qlh7xtZ_LqBr-t4KrE8j
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Set the `VITE_GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
-   `npm run dev`
+   `npm run dev:full`
+   
+   Or run components separately:
+   - Storage server: `npm run dev:storage`
+   - Frontend: `npm run dev`
+
+**Storage:**
+- In AI Studio: Uses browser localStorage
+- Locally: Uses file-based storage (data stored in `server/data/`)
+- The app automatically detects the environment and uses the appropriate storage method

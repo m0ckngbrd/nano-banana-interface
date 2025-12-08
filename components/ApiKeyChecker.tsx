@@ -12,6 +12,16 @@ export const ApiKeyChecker: React.FC<ApiKeyCheckerProps> = ({ onReady }) => {
 
   const checkKey = useCallback(async () => {
     try {
+      // First check if API key is available from environment (.env.local)
+      const envApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (envApiKey) {
+        console.log("API key found in environment");
+        onReady();
+        setChecking(false);
+        return;
+      }
+
+      // Fall back to checking Google AI Studio
       const hasKey = await window.aistudio.hasSelectedApiKey();
       if (hasKey) {
         onReady();
