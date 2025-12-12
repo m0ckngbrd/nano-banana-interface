@@ -18,15 +18,27 @@ export const DEFAULT_SETTINGS: GenerationSettings = {
 export const DEFAULT_TEMPLATES: PromptTemplate[] = [
   {
     id: "default_summarize_to_scene",
-    name: "Summarize page into a scene",
+    name: "Visualize page content",
     content:
-      "Create an image prompt from this page. Be concrete, visual, and specific.\n\nTitle: {{title}}\nURL: {{url}}\n\nPage:\n{{pageText}}\n\nImage prompt:",
+      "Create a detailed, visually striking image that represents the key themes and content from this page:\n\nTitle: {{title}}\nURL: {{url}}\n\n{{pageText}}",
   },
   {
     id: "default_cover_image",
-    name: "Cover image (hero banner)",
+    name: "Hero banner image",
     content:
-      "You are generating a website hero banner image concept.\n\nTitle: {{title}}\nURL: {{url}}\n\nUse the page text below as context. Return a single detailed image prompt.\n\n{{pageText}}",
+      "Generate a professional hero banner image suitable for a website header, inspired by the content of this page:\n\nTitle: {{title}}\nURL: {{url}}\n\n{{pageText}}",
+  },
+  {
+    id: "default_illustration",
+    name: "Illustration",
+    content:
+      "Create an illustration that captures the essence of this content:\n\n{{pageText}}",
+  },
+  {
+    id: "default_concept_art",
+    name: "Concept art",
+    content:
+      "Generate concept art based on the ideas and themes described here:\n\n{{pageText}}",
   },
 ];
 
