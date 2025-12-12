@@ -1,29 +1,22 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Nano Banana Interface (Chrome Extension)
 
-# Run and deploy your AI Studio app
+This repo builds a **Chrome Manifest V3 extension** that:
+- Captures the current tab’s text content
+- Wraps it with a selected **prompt template**
+- Submits the prompt to Nano Banana (via `@google/genai`)
+- Shows the resulting image and allows download
 
-This contains everything you need to run your app locally.
+## Develop
 
-View your app in AI Studio: https://ai.studio/apps/drive/1h3Qlh7xtZ_LqBr-t4KrE8jzHXTew9jL5
+1. Install deps:
+   - `npm install`
+2. Build the extension:
+   - `npm run build`
+3. Load unpacked in Chrome:
+   - Go to `chrome://extensions`
+   - Enable **Developer mode**
+   - Click **Load unpacked**
+   - Select the `dist/` folder
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `VITE_GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev:full`
-   
-   Or run components separately:
-   - Storage server: `npm run dev:storage`
-   - Frontend: `npm run dev`
-
-**Storage:**
-- In AI Studio: Uses browser localStorage
-- Locally: Uses file-based storage (data stored in `server/data/`)
-- The app automatically detects the environment and uses the appropriate storage method
+## Notes
+- Capturing text from `file://` PDFs requires enabling **“Allow access to file URLs”** for the extension in `chrome://extensions`.

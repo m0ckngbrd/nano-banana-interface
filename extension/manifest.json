@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Nano Banana Interface",
+  "description": "Capture page text, wrap with prompt templates, and generate images with Nano Banana.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "Nano Banana",
+    "default_popup": "extension/popup.html"
+  },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://generativelanguage.googleapis.com/*"],
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  }
+}
+
+
