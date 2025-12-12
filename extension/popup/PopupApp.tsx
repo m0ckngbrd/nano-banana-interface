@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, RefreshCcw, Send, Settings, X, ZoomIn } from "lucide-react";
+import { Download, ExternalLink, RefreshCcw, Send, Settings, X, ZoomIn, DollarSign } from "lucide-react";
 
 import { Button } from "../../components/Button";
 import { TemplateManager } from "../../components/TemplateManager";
@@ -7,6 +7,7 @@ import { SettingsModal } from "../../components/SettingsModal";
 import type { GenerationSettings, PromptTemplate } from "../../types";
 import type { BgRequest, BgResponse } from "../shared/messages";
 import { DEFAULT_SETTINGS } from "../shared/types";
+import { getCostEstimate, calculateCost, formatCost } from "../shared/costEstimator";
 
 type CapturedPage = { title: string; url: string; text: string; method: string };
 
@@ -245,7 +246,20 @@ export const PopupApp: React.FC = () => {
         </section>
 
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-          <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Prompt</div>
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Prompt</div>
+            {builtPrompt.trim() && (
+              <div className="flex items-center gap-1 text-xs text-emerald-400 font-mono bg-emerald-950/30 px-2 py-1 rounded border border-emerald-900/50">
+                <DollarSign size={10} />
+                <span title={(() => {
+                  const breakdown = calculateCost(builtPrompt, settings.resolution);
+                  return `Text: ${breakdown.textTokens} tokens (${formatCost(breakdown.textInputCost)})\nImage: ${breakdown.imageTokens} tokens (${formatCost(breakdown.imageOutputCost)})`;
+                })()}>
+                  {getCostEstimate(builtPrompt, settings.resolution)}
+                </span>
+              </div>
+            )}
+          </div>
           <textarea
             className="w-full h-28 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
             value={builtPrompt}

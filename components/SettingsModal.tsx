@@ -2,6 +2,7 @@ import React from 'react';
 import { GenerationSettings } from '../types';
 import { X, RotateCcw, Settings as SettingsIcon, Monitor, Box, Thermometer, DollarSign, Key } from 'lucide-react';
 import { Button } from './Button';
+import { getCostEstimate } from '../extension/shared/costEstimator';
 
 interface SettingsModalProps {
   settings: GenerationSettings;
@@ -47,15 +48,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   ];
 
   const resolutions: GenerationSettings['resolution'][] = ['1K', '2K', '4K'];
-
-  // Pricing based on tokens:
-  // 1K & 2K = 1120 tokens (~$0.0336)
-  // 4K = 2000 tokens (~$0.0600)
-  // Based on $30 / 1M tokens
-  const getCostEstimate = (res: string) => {
-    if (res === '4K') return '~$0.06';
-    return '~$0.034';
-  };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -129,8 +121,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </label>
                 <div className="flex items-center gap-1 text-xs text-emerald-400 font-mono bg-emerald-950/30 px-2 py-1 rounded border border-emerald-900/50">
                     <DollarSign size={10} />
-                    <span>Est. {getCostEstimate(settings.resolution)}</span>
+                    <span>Est. {getCostEstimate('', settings.resolution)}</span>
                 </div>
+                <p className="text-[10px] text-slate-500 px-1">
+                  Image only (text input cost varies by prompt length)
+                </p>
             </div>
 
             <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">

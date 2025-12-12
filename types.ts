@@ -5,6 +5,10 @@ export interface HistoryItem {
   imageUrl?: string;
   status: 'waiting' | 'generating' | 'success' | 'error';
   errorMessage?: string;
+  // Cost tracking (optional for future use)
+  estimatedCost?: number;
+  textTokens?: number;
+  imageTokens?: number;
 }
 
 export interface PromptTemplate {
