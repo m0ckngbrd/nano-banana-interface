@@ -15,6 +15,7 @@ export interface PromptTemplate {
   id: string;
   name: string;
   content: string;
+  isDefault?: boolean;
 }
 
 export interface GenerationSettings {

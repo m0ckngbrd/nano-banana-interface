@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { PromptTemplate } from '../types';
 import { Button } from './Button';
-import { Bookmark, Trash2, Plus, Sparkles, X } from 'lucide-react';
+import { Bookmark, Trash2, Plus, Sparkles, X, Star } from 'lucide-react';
 
 interface TemplateManagerProps {
   templates: PromptTemplate[];
   onAdd: (template: PromptTemplate) => void;
   onRemove: (id: string) => void;
   onSelect: (content: string) => void;
+  onSetDefault: (id: string) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -17,6 +18,7 @@ export const TemplateManager: React.FC<TemplateManagerProps> = ({
   onAdd,
   onRemove,
   onSelect,
+  onSetDefault,
   isOpen,
   onClose
 }) => {
@@ -98,7 +100,18 @@ export const TemplateManager: React.FC<TemplateManagerProps> = ({
             
             {templates.map(template => (
               <div key={template.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4 hover:border-indigo-500/50 transition-colors group relative">
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <button 
+                    onClick={(e) => { e.stopPropagation(); onSetDefault(template.id); }}
+                    className={`p-2 rounded-full ${
+                      template.isDefault 
+                        ? 'text-yellow-400 bg-slate-900/80' 
+                        : 'text-slate-400 hover:text-yellow-400 bg-slate-900/80'
+                    }`}
+                    title={template.isDefault ? 'Default template' : 'Set as default'}
+                   >
+                     <Star size={16} fill={template.isDefault ? 'currentColor' : 'none'} />
+                   </button>
                    <button 
                     onClick={(e) => { e.stopPropagation(); onRemove(template.id); }}
                     className="p-2 text-slate-400 hover:text-red-400 bg-slate-900/80 rounded-full"
@@ -106,7 +119,12 @@ export const TemplateManager: React.FC<TemplateManagerProps> = ({
                      <Trash2 size={16} />
                    </button>
                 </div>
-                <h3 className="font-bold text-slate-200 mb-2 pr-8">{template.name}</h3>
+                <h3 className="font-bold text-slate-200 mb-2 pr-8">
+                  {template.name}
+                  {template.isDefault && (
+                    <Star size={14} className="inline ml-2 text-yellow-400" fill="currentColor" />
+                  )}
+                </h3>
                 <p className="text-sm text-slate-400 line-clamp-3 mb-4 h-14">{template.content}</p>
                 <Button 
                   className="w-full text-sm" 

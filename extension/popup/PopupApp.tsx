@@ -77,7 +77,9 @@ export const PopupApp: React.FC = () => {
       const t = await bg<{ type: "templates.get"; templates: PromptTemplate[] }>({ type: "templates.get" });
       setTemplates(t.templates);
       if (!cfg.config.selectedTemplateId && t.templates.length > 0) {
-        setSelectedTemplateId(t.templates[0].id);
+        // Select the default template, or fall back to the first template
+        const defaultTemplate = t.templates.find((tmpl) => tmpl.isDefault);
+        setSelectedTemplateId(defaultTemplate?.id ?? t.templates[0].id);
       }
     })().catch((e) => {
       console.error(e);
@@ -329,6 +331,14 @@ export const PopupApp: React.FC = () => {
           // TemplateManager's built-in "Use Template" is not used in the extension flow;
           // template selection is driven by the dropdown.
           void content;
+        }}
+        onSetDefault={(id) => {
+          const next = templates.map((t) => ({
+            ...t,
+            isDefault: t.id === id,
+          }));
+          setTemplates(next);
+          bg({ type: "templates.set", templates: next }).catch(() => {});
         }}
         isOpen={isTemplateModalOpen}
         onClose={() => setIsTemplateModalOpen(false)}

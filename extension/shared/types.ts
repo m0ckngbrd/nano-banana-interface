@@ -10,17 +10,18 @@ export interface ExtensionConfig {
 }
 
 export const DEFAULT_SETTINGS: GenerationSettings = {
-  aspectRatio: "1:1",
+  aspectRatio: "Auto",
   resolution: "1K",
   temperature: 1.0,
 };
 
 export const DEFAULT_TEMPLATES: PromptTemplate[] = [
   {
-    id: "default_summarize_to_scene",
-    name: "Visualize page content",
+    id: "default_detailed_infographic",
+    name: "Detailed, creative infographic",
     content:
-      "Create a detailed, visually striking image that represents the key themes and content from this page:\n\nTitle: {{title}}\nURL: {{url}}\n\n{{pageText}}",
+      "Create a detailed, creative infographic image that represents the key ideas and learnings from this page:\n\nTitle: {{title}}\nURL: {{url}}\n\n{{pageText}}",
+    isDefault: true,
   },
   {
     id: "default_cover_image",
