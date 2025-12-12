@@ -1,11 +1,13 @@
 import React from 'react';
 import { GenerationSettings } from '../types';
-import { X, RotateCcw, Settings as SettingsIcon, Monitor, Box, Thermometer, DollarSign } from 'lucide-react';
+import { X, RotateCcw, Settings as SettingsIcon, Monitor, Box, Thermometer, DollarSign, Key } from 'lucide-react';
 import { Button } from './Button';
 
 interface SettingsModalProps {
   settings: GenerationSettings;
   onUpdate: (settings: GenerationSettings) => void;
+  apiKey?: string;
+  onUpdateApiKey?: (apiKey: string) => void;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -19,6 +21,8 @@ const DEFAULT_SETTINGS: GenerationSettings = {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdate,
+  apiKey,
+  onUpdateApiKey,
   isOpen,
   onClose
 }) => {
@@ -70,6 +74,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Body */}
         <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
+
+          {/* API Key (optional) */}
+          {typeof apiKey === 'string' && typeof onUpdateApiKey === 'function' && (
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 uppercase tracking-wider">
+                <Key size={16} className="text-indigo-400" />
+                API Key
+              </label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => onUpdateApiKey(e.target.value)}
+                placeholder="Paste your key..."
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              />
+              <p className="text-xs text-slate-500 px-1">
+                Stored in Chrome storage. Needed to generate images.
+              </p>
+            </div>
+          )}
           
           {/* Aspect Ratio */}
           <div className="space-y-3">

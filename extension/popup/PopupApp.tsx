@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Bookmark, Download, RefreshCcw, Send, Settings } from "lucide-react";
+import { Download, ExternalLink, RefreshCcw, Send, Settings, X, ZoomIn } from "lucide-react";
 
 import { Button } from "../../components/Button";
 import { TemplateManager } from "../../components/TemplateManager";
@@ -15,6 +15,35 @@ async function bg<T extends BgResponse>(req: BgRequest): Promise<T> {
   if (!res?.ok) throw new Error(res?.error || "Request failed");
   return res.result as T;
 }
+
+const ImageLightbox: React.FC<{
+  imageDataUrl: string;
+  onClose: () => void;
+  onDownload: () => void;
+  onOpenInTab: () => void;
+}> = ({ imageDataUrl, onClose, onDownload, onOpenInTab }) => {
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+      <div className="bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl w-full h-full flex flex-col overflow-hidden">
+        <div className="shrink-0 p-3 border-b border-slate-800 flex items-center justify-between">
+          <div className="text-sm font-semibold text-slate-200">Preview</div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" className="text-sm" onClick={onOpenInTab} icon={<ExternalLink size={16} />}>
+              Open tab
+            </Button>
+            <Button variant="secondary" className="text-sm" onClick={onDownload} icon={<Download size={16} />}>
+              Download
+            </Button>
+            <Button variant="secondary" className="w-9 px-0" onClick={onClose} title="Close" icon={<X size={16} />} />
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto p-3 flex items-center justify-center">
+          <img src={imageDataUrl} className="max-w-full max-h-full object-contain rounded-lg border border-slate-800" />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const PopupApp: React.FC = () => {
   const [apiKey, setApiKey] = useState<string>("");
@@ -35,6 +64,7 @@ export const PopupApp: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [imageDataUrl, setImageDataUrl] = useState<string>("");
   const [genError, setGenError] = useState<string | null>(null);
+  const [isImageOpen, setIsImageOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -139,13 +169,6 @@ export const PopupApp: React.FC = () => {
           <Button
             variant="secondary"
             className="w-9 px-0"
-            title="Templates"
-            onClick={() => setIsTemplateModalOpen(true)}
-            icon={<Bookmark size={16} />}
-          />
-          <Button
-            variant="secondary"
-            className="w-9 px-0"
             title="Settings"
             onClick={() => setIsSettingsModalOpen(true)}
             icon={<Settings size={16} />}
@@ -197,7 +220,16 @@ export const PopupApp: React.FC = () => {
         </section>
 
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-          <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Template</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Template</div>
+            <Button
+              variant="secondary"
+              className="text-sm"
+              onClick={() => setIsTemplateModalOpen(true)}
+            >
+              Edit templates
+            </Button>
+          </div>
           <select
             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
             value={selectedTemplateId}
@@ -236,24 +268,28 @@ export const PopupApp: React.FC = () => {
         {imageDataUrl && (
           <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
             <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Result</div>
-            <img src={imageDataUrl} className="w-full rounded-lg border border-slate-800" />
+            <button
+              className="relative w-full group"
+              onClick={() => setIsImageOpen(true)}
+              title="Click to zoom"
+            >
+              <img src={imageDataUrl} className="w-full rounded-lg border border-slate-800" />
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 text-[11px] bg-black/60 text-white px-2 py-1 rounded-md border border-white/10">
+                  <ZoomIn size={14} />
+                  Zoom
+                </div>
+              </div>
+            </button>
+            <div className="text-xs text-amber-300 bg-amber-950/30 border border-amber-900/40 rounded-lg p-2">
+              Download this image now — <span className="text-amber-200">history isn’t saved</span> in the extension yet.
+            </div>
             <Button onClick={handleDownload} variant="secondary" icon={<Download size={16} />} className="w-full">
               Download
             </Button>
           </section>
         )}
       </main>
-
-      <footer className="shrink-0 border-t border-slate-800 bg-slate-900/40 px-3 py-2">
-        <label className="text-[11px] text-slate-400">API key</label>
-        <input
-          type="password"
-          className="mt-1 w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          placeholder="Paste your key..."
-        />
-      </footer>
 
       <TemplateManager
         templates={templates}
@@ -287,9 +323,20 @@ export const PopupApp: React.FC = () => {
       <SettingsModal
         settings={settings}
         onUpdate={(s) => setSettings(s)}
+        apiKey={apiKey}
+        onUpdateApiKey={(k) => setApiKey(k)}
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
       />
+
+      {isImageOpen && imageDataUrl && (
+        <ImageLightbox
+          imageDataUrl={imageDataUrl}
+          onClose={() => setIsImageOpen(false)}
+          onDownload={handleDownload}
+          onOpenInTab={() => chrome.tabs.create({ url: imageDataUrl })}
+        />
+      )}
     </div>
   );
 };
