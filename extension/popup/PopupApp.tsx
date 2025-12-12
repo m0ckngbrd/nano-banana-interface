@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, RefreshCcw, Send, Settings, X, ZoomIn, DollarSign } from "lucide-react";
+import { Download, ExternalLink, RefreshCcw, Send, Settings, X, ZoomIn, DollarSign, FileText, Clipboard } from "lucide-react";
 
 import { Button } from "../../components/Button";
 import { TemplateManager } from "../../components/TemplateManager";
@@ -9,7 +9,7 @@ import type { BgRequest, BgResponse } from "../shared/messages";
 import { DEFAULT_SETTINGS } from "../shared/types";
 import { getCostEstimate, calculateCost, formatCost } from "../shared/costEstimator";
 
-type CapturedPage = { title: string; url: string; text: string; method: string };
+type CapturedPage = { title: string; url: string; text: string; method: "pageText" | "selection" | "pdf" };
 
 async function bg<T extends BgResponse>(req: BgRequest): Promise<T> {
   const res = await chrome.runtime.sendMessage(req);
@@ -57,6 +57,8 @@ export const PopupApp: React.FC = () => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [showCapturePreview, setShowCapturePreview] = useState(true);
+  const [showPasteMode, setShowPasteMode] = useState(false);
+  const [pasteText, setPasteText] = useState("");
 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -101,6 +103,7 @@ export const PopupApp: React.FC = () => {
     setCaptureError(null);
     setGenError(null);
     setImageDataUrl("");
+    setShowPasteMode(false);
     try {
       const res = await bg<{ type: "page.capture"; page: CapturedPage }>({ type: "page.capture" });
       setCaptured(res.page);
@@ -108,8 +111,46 @@ export const PopupApp: React.FC = () => {
     } catch (e: any) {
       setCaptured(null);
       setCaptureError(e?.message || "Capture failed");
+      setShowPasteMode(true);
     } finally {
       setIsCapturing(false);
+    }
+  }
+
+  async function handlePasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      setPasteText(text);
+      if (text.trim()) {
+        const tab = await chrome.tabs.query({ active: true, currentWindow: true });
+        setCaptured({
+          title: tab[0]?.title || "Pasted Content",
+          url: tab[0]?.url || "",
+          text: text,
+          method: "selection",
+        });
+        setShowPasteMode(false);
+        setCaptureError(null);
+        setPasteText("");
+      }
+    } catch (e: any) {
+      setCaptureError("Could not read from clipboard. Please paste manually below.");
+    }
+  }
+
+  function handleManualPaste() {
+    if (pasteText.trim()) {
+      chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => {
+        setCaptured({
+          title: tabs[0]?.title || "Pasted Content",
+          url: tabs[0]?.url || "",
+          text: pasteText,
+          method: "selection",
+        });
+        setShowPasteMode(false);
+        setCaptureError(null);
+        setPasteText("");
+      });
     }
   }
 
@@ -164,8 +205,17 @@ export const PopupApp: React.FC = () => {
           <div className="text-sm font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
             Nano Banana
           </div>
-          <div className="text-[11px] text-slate-400">
-            {captured ? `Captured ${captured.text.length} chars` : "Capture page text to begin"}
+          <div className="text-[11px] text-slate-400 flex items-center gap-1">
+            {captured ? (
+              <>
+                {captured.method === "pdf" && (
+                  <FileText size={12} className="text-amber-400" title="PDF Document" />
+                )}
+                <span>Captured {captured.text.length} chars{captured.method === "pdf" ? " from PDF" : ""}</span>
+              </>
+            ) : (
+              "Capture page text to begin"
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -193,7 +243,37 @@ export const PopupApp: React.FC = () => {
               Capture page text
             </Button>
           </div>
-          {captureError && <div className="text-xs text-red-400">{captureError}</div>}
+          {captureError && (
+            <div className="space-y-2">
+              <div className="text-xs text-red-400">{captureError}</div>
+              {showPasteMode && (
+                <div className="text-xs text-slate-400">
+                  <Button
+                    variant="secondary"
+                    onClick={handlePasteFromClipboard}
+                    icon={<Clipboard size={14} />}
+                    className="text-xs w-full mb-2"
+                  >
+                    Paste from clipboard
+                  </Button>
+                  <div className="text-[11px] text-slate-500 mb-1">Or paste text manually:</div>
+                  <textarea
+                    className="w-full h-24 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Paste your text here..."
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                  />
+                  <Button
+                    onClick={handleManualPaste}
+                    disabled={!pasteText.trim()}
+                    className="text-xs w-full mt-2"
+                  >
+                    Use pasted text
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
           {captured && (
             <div className="text-xs text-slate-400">
               <div className="truncate">
@@ -202,8 +282,17 @@ export const PopupApp: React.FC = () => {
               <div className="truncate">
                 <span className="text-slate-300">URL:</span> {captured.url}
               </div>
-              <div>
-                <span className="text-slate-300">Method:</span> {captured.method}
+              <div className="flex items-center gap-2">
+                <span className="text-slate-300">Method:</span> 
+                <span className="flex items-center gap-1">
+                  {captured.method}
+                  {captured.method === "pdf" && (
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-amber-950/50 text-amber-300 px-1.5 py-0.5 rounded border border-amber-900/50">
+                      <FileText size={10} />
+                      PDF
+                    </span>
+                  )}
+                </span>
               </div>
               <button
                 className="mt-2 text-indigo-400 hover:text-indigo-300 text-xs"
