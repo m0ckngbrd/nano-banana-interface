@@ -49,13 +49,15 @@ export function estimateTextTokens(text: string): number {
  */
 export function calculateCost(
   promptText: string,
-  resolution: '1K' | '2K' | '4K'
+  resolution: '1K' | '2K' | '4K',
+  imageCount: number = 1
 ): CostBreakdown {
   const textTokens = estimateTextTokens(promptText);
   const imageTokens = IMAGE_TOKENS[resolution];
 
   const textInputCost = (textTokens / 1_000_000) * PRICING.TEXT_INPUT_PER_1M;
-  const imageOutputCost = (imageTokens / 1_000_000) * PRICING.IMAGE_OUTPUT_PER_1M;
+  const imageOutputCostPerImage = (imageTokens / 1_000_000) * PRICING.IMAGE_OUTPUT_PER_1M;
+  const imageOutputCost = imageOutputCostPerImage * imageCount;
   const totalCost = textInputCost + imageOutputCost;
 
   return {
@@ -79,8 +81,8 @@ export function formatCost(cost: number): string {
 /**
  * Gets a simple cost estimate string for display
  */
-export function getCostEstimate(promptText: string, resolution: '1K' | '2K' | '4K'): string {
-  const breakdown = calculateCost(promptText, resolution);
+export function getCostEstimate(promptText: string, resolution: '1K' | '2K' | '4K', imageCount: number = 1): string {
+  const breakdown = calculateCost(promptText, resolution, imageCount);
   return formatCost(breakdown.totalCost);
 }
 
@@ -89,15 +91,21 @@ export function getCostEstimate(promptText: string, resolution: '1K' | '2K' | '4
  */
 export function getDetailedCostEstimate(
   promptText: string,
-  resolution: '1K' | '2K' | '4K'
+  resolution: '1K' | '2K' | '4K',
+  imageCount: number = 1
 ): string {
-  const breakdown = calculateCost(promptText, resolution);
+  const breakdown = calculateCost(promptText, resolution, imageCount);
   const parts: string[] = [];
   
   if (breakdown.textTokens > 0) {
     parts.push(`${breakdown.textTokens} text tokens (${formatCost(breakdown.textInputCost)})`);
   }
-  parts.push(`${breakdown.imageTokens} image tokens (${formatCost(breakdown.imageOutputCost)})`);
+  if (imageCount > 1) {
+    const imageOutputCostPerImage = (breakdown.imageTokens / 1_000_000) * PRICING.IMAGE_OUTPUT_PER_1M;
+    parts.push(`${imageCount} images × ${breakdown.imageTokens} tokens (${formatCost(imageOutputCostPerImage)} each) = ${formatCost(breakdown.imageOutputCost)}`);
+  } else {
+    parts.push(`${breakdown.imageTokens} image tokens (${formatCost(breakdown.imageOutputCost)})`);
+  }
   
   return `${formatCost(breakdown.totalCost)} total\n${parts.join(' + ')}`;
 }

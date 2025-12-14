@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: GenerationSettings = {
   aspectRatio: "Auto",
   resolution: "1K",
   temperature: 1.0,
+  imageCount: 1,
 };
 
 export const DEFAULT_TEMPLATES: PromptTemplate[] = [

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Download, ExternalLink, RefreshCcw, Send, Settings, X, ZoomIn, DollarSign, FileText, Clipboard } from "lucide-react";
+import { Download, ExternalLink, RefreshCcw, Send, Settings, X, ZoomIn, DollarSign, FileText, Clipboard, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
 
 import { Button } from "../../components/Button";
 import { TemplateManager } from "../../components/TemplateManager";
@@ -18,28 +18,54 @@ async function bg<T extends BgResponse>(req: BgRequest): Promise<T> {
 }
 
 const ImageLightbox: React.FC<{
-  imageDataUrl: string;
+  imageDataUrls: string[];
+  currentIndex: number;
   onClose: () => void;
-  onDownload: () => void;
-  onOpenInTab: () => void;
-}> = ({ imageDataUrl, onClose, onDownload, onOpenInTab }) => {
+  onDownload: (index: number) => void;
+  onOpenInTab: (index: number) => void;
+  onNavigate: (index: number) => void;
+}> = ({ imageDataUrls, currentIndex, onClose, onDownload, onOpenInTab, onNavigate }) => {
+  const hasMultiple = imageDataUrls.length > 1;
+  const canGoPrev = hasMultiple && currentIndex > 0;
+  const canGoNext = hasMultiple && currentIndex < imageDataUrls.length - 1;
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-3">
       <div className="bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl w-full h-full flex flex-col overflow-hidden">
         <div className="shrink-0 p-3 border-b border-slate-800 flex items-center justify-between">
-          <div className="text-sm font-semibold text-slate-200">Preview</div>
+          <div className="text-sm font-semibold text-slate-200">
+            Preview {hasMultiple && `(${currentIndex + 1}/${imageDataUrls.length})`}
+          </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" className="text-sm" onClick={onOpenInTab} icon={<ExternalLink size={16} />}>
+            <Button variant="secondary" className="text-sm" onClick={() => onOpenInTab(currentIndex)} icon={<ExternalLink size={16} />}>
               Open tab
             </Button>
-            <Button variant="secondary" className="text-sm" onClick={onDownload} icon={<Download size={16} />}>
+            <Button variant="secondary" className="text-sm" onClick={() => onDownload(currentIndex)} icon={<Download size={16} />}>
               Download
             </Button>
             <Button variant="secondary" className="w-9 px-0" onClick={onClose} title="Close" icon={<X size={16} />} />
           </div>
         </div>
-        <div className="flex-1 overflow-auto p-3 flex items-center justify-center">
-          <img src={imageDataUrl} className="max-w-full max-h-full object-contain rounded-lg border border-slate-800" />
+        <div className="flex-1 overflow-auto p-3 flex items-center justify-center relative">
+          {hasMultiple && canGoPrev && (
+            <button
+              onClick={() => onNavigate(currentIndex - 1)}
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full border border-white/20 transition-all z-10"
+              title="Previous image"
+            >
+              <ChevronLeft size={24} />
+            </button>
+          )}
+          <img src={imageDataUrls[currentIndex]} className="max-w-full max-h-full object-contain rounded-lg border border-slate-800" />
+          {hasMultiple && canGoNext && (
+            <button
+              onClick={() => onNavigate(currentIndex + 1)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full border border-white/20 transition-all z-10"
+              title="Next image"
+            >
+              <ChevronRight size={24} />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -66,14 +92,24 @@ export const PopupApp: React.FC = () => {
   const [builtPrompt, setBuiltPrompt] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [imageDataUrl, setImageDataUrl] = useState<string>("");
+  const [imageDataUrls, setImageDataUrls] = useState<string[]>([]);
   const [genError, setGenError] = useState<string | null>(null);
   const [isImageOpen, setIsImageOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageCount, setImageCount] = useState<number>(1);
 
   useEffect(() => {
     (async () => {
       const cfg = await bg<{ type: "config.get"; config: any }>({ type: "config.get" });
       setApiKey(cfg.config.apiKey ?? "");
-      setSettings(cfg.config.settings ?? DEFAULT_SETTINGS);
+      const loadedSettings = cfg.config.settings ?? DEFAULT_SETTINGS;
+      setSettings(loadedSettings);
+      // Ensure imageCount is between 1 and 5
+      const validImageCount = Math.max(1, Math.min(5, loadedSettings.imageCount ?? 1));
+      setImageCount(validImageCount);
+      if (validImageCount !== (loadedSettings.imageCount ?? 1)) {
+        setSettings({ ...loadedSettings, imageCount: validImageCount });
+      }
       setSelectedTemplateId(cfg.config.selectedTemplateId ?? "");
 
       const t = await bg<{ type: "templates.get"; templates: PromptTemplate[] }>({ type: "templates.get" });
@@ -87,6 +123,17 @@ export const PopupApp: React.FC = () => {
       console.error(e);
     });
   }, []);
+
+  useEffect(() => {
+    // Update imageCount in settings when it changes, ensuring it's valid
+    const validImageCount = Math.max(1, Math.min(5, imageCount));
+    if (validImageCount !== imageCount) {
+      setImageCount(validImageCount);
+    }
+    if (settings.imageCount !== validImageCount) {
+      setSettings({ ...settings, imageCount: validImageCount });
+    }
+  }, [imageCount]);
 
   useEffect(() => {
     // persist config
@@ -103,6 +150,7 @@ export const PopupApp: React.FC = () => {
     setCaptureError(null);
     setGenError(null);
     setImageDataUrl("");
+    setImageDataUrls([]);
     setShowPasteMode(false);
     try {
       const res = await bg<{ type: "page.capture"; page: CapturedPage }>({ type: "page.capture" });
@@ -176,13 +224,27 @@ export const PopupApp: React.FC = () => {
     setIsGenerating(true);
     setGenError(null);
     setImageDataUrl("");
+    setImageDataUrls([]);
+    setCurrentImageIndex(0);
     try {
-      const res = await bg<{ type: "image.generate"; imageDataUrl: string }>({
+      const res = await bg<{ type: "image.generate"; imageDataUrl?: string; imageDataUrls?: string[] }>({
         type: "image.generate",
         prompt: builtPrompt,
-        settings,
+        settings: { ...settings, imageCount },
+        imageCount,
       });
-      setImageDataUrl(res.imageDataUrl);
+      
+      if (res.imageDataUrl) {
+        // Single image response (backward compatibility)
+        setImageDataUrl(res.imageDataUrl);
+        setImageDataUrls([res.imageDataUrl]);
+      } else if (res.imageDataUrls) {
+        // Multiple images response
+        setImageDataUrls(res.imageDataUrls);
+        if (res.imageDataUrls.length === 1) {
+          setImageDataUrl(res.imageDataUrls[0]);
+        }
+      }
     } catch (e: any) {
       setGenError(e?.message || "Generation failed");
     } finally {
@@ -190,11 +252,12 @@ export const PopupApp: React.FC = () => {
     }
   }
 
-  function handleDownload() {
-    if (!imageDataUrl) return;
+  function handleDownload(index?: number) {
+    const urlToDownload = index !== undefined ? imageDataUrls[index] : imageDataUrl;
+    if (!urlToDownload) return;
     const a = document.createElement("a");
-    a.href = imageDataUrl;
-    a.download = "nano-banana.png";
+    a.href = urlToDownload;
+    a.download = `nano-banana-${index !== undefined ? index + 1 : ''}.png`;
     a.click();
   }
 
@@ -343,10 +406,15 @@ export const PopupApp: React.FC = () => {
               <div className="flex items-center gap-1 text-xs text-emerald-400 font-mono bg-emerald-950/30 px-2 py-1 rounded border border-emerald-900/50">
                 <DollarSign size={10} />
                 <span title={(() => {
-                  const breakdown = calculateCost(builtPrompt, settings.resolution);
-                  return `Text: ${breakdown.textTokens} tokens (${formatCost(breakdown.textInputCost)})\nImage: ${breakdown.imageTokens} tokens (${formatCost(breakdown.imageOutputCost)})`;
+                  const breakdown = calculateCost(builtPrompt, settings.resolution, imageCount);
+                  const imageCostPerImage = (breakdown.imageTokens / 1_000_000) * 120.0;
+                  if (imageCount > 1) {
+                    return `Text: ${breakdown.textTokens} tokens (${formatCost(breakdown.textInputCost)})\nImages: ${imageCount} × ${breakdown.imageTokens} tokens (${formatCost(imageCostPerImage)} each) = ${formatCost(breakdown.imageOutputCost)}\nTotal: ${formatCost(breakdown.totalCost)}`;
+                  } else {
+                    return `Text: ${breakdown.textTokens} tokens (${formatCost(breakdown.textInputCost)})\nImage: ${breakdown.imageTokens} tokens (${formatCost(breakdown.imageOutputCost)})`;
+                  }
                 })()}>
-                  {getCostEstimate(builtPrompt, settings.resolution)}
+                  {getCostEstimate(builtPrompt, settings.resolution, imageCount)}
                 </span>
               </div>
             )}
@@ -357,6 +425,31 @@ export const PopupApp: React.FC = () => {
             onChange={(e) => setBuiltPrompt(e.target.value)}
             placeholder="Capture a page and select a template to build the prompt..."
           />
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 flex items-center gap-1">
+              <ImageIcon size={14} />
+              Images:
+            </label>
+            <div className="flex bg-slate-950 border border-slate-800 rounded-lg p-1 flex-1">
+              {[1, 2, 3, 4, 5].map((count) => (
+                <button
+                  key={count}
+                  onClick={() => setImageCount(count)}
+                  disabled={isGenerating}
+                  className={`flex-1 py-1.5 text-xs font-medium rounded transition-all ${
+                    imageCount === count
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed'
+                  }`}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+            {imageCount !== (settings.imageCount ?? 1) && (
+              <span className="text-[10px] text-slate-500">(override)</span>
+            )}
+          </div>
           <Button
             onClick={handleGenerate}
             disabled={!apiKey.trim() || !builtPrompt.trim() || isGenerating}
@@ -364,7 +457,7 @@ export const PopupApp: React.FC = () => {
             icon={!isGenerating ? <Send size={16} /> : undefined}
             className="w-full"
           >
-            Generate
+            {isGenerating ? `Generating ${imageCount} image${imageCount > 1 ? 's' : ''}...` : 'Generate'}
           </Button>
           {!apiKey.trim() && <div className="text-xs text-amber-400">Set your API key in Settings to generate.</div>}
           {genError && <div className="text-xs text-red-400">{genError}</div>}
@@ -442,12 +535,14 @@ export const PopupApp: React.FC = () => {
         onClose={() => setIsSettingsModalOpen(false)}
       />
 
-      {isImageOpen && imageDataUrl && (
+      {isImageOpen && imageDataUrls.length > 0 && (
         <ImageLightbox
-          imageDataUrl={imageDataUrl}
+          imageDataUrls={imageDataUrls}
+          currentIndex={currentImageIndex}
           onClose={() => setIsImageOpen(false)}
           onDownload={handleDownload}
-          onOpenInTab={() => chrome.tabs.create({ url: imageDataUrl })}
+          onOpenInTab={(index) => chrome.tabs.create({ url: imageDataUrls[index] })}
+          onNavigate={setCurrentImageIndex}
         />
       )}
     </div>

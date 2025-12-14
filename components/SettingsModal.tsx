@@ -1,6 +1,6 @@
 import React from 'react';
 import { GenerationSettings } from '../types';
-import { X, RotateCcw, Settings as SettingsIcon, Monitor, Box, Thermometer, DollarSign, Key } from 'lucide-react';
+import { X, RotateCcw, Settings as SettingsIcon, Monitor, Box, Thermometer, DollarSign, Key, Image as ImageIcon } from 'lucide-react';
 import { Button } from './Button';
 import { getCostEstimate } from '../extension/shared/costEstimator';
 
@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS: GenerationSettings = {
   aspectRatio: '1:1',
   resolution: '1K',
   temperature: 1.0,
+  imageCount: 1,
 };
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -121,7 +122,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </label>
                 <div className="flex items-center gap-1 text-xs text-emerald-400 font-mono bg-emerald-950/30 px-2 py-1 rounded border border-emerald-900/50">
                     <DollarSign size={10} />
-                    <span>Est. {getCostEstimate('', settings.resolution)}</span>
+                    <span>Est. {getCostEstimate('', settings.resolution, settings.imageCount ?? 1)}</span>
                 </div>
                 <p className="text-[10px] text-slate-500 px-1">
                   Image only (text input cost varies by prompt length)
@@ -144,7 +145,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               ))}
             </div>
             <p className="text-xs text-slate-500 px-1">
-                Higher resolutions consume more tokens. 4K images cost approximately 2x as much as 1K images.
+                Higher resolutions consume more tokens. 4K images cost approximately 2x as much as 1K images. Cost scales with image count.
+            </p>
+          </div>
+
+          {/* Image Count */}
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 uppercase tracking-wider">
+              <ImageIcon size={16} className="text-indigo-400" />
+              Image Count
+            </label>
+            <div className="flex bg-slate-800 p-1 rounded-xl border border-slate-700">
+              {[1, 2, 3, 4, 5].map((count) => (
+                <button
+                  key={count}
+                  onClick={() => onUpdate({ ...settings, imageCount: count })}
+                  className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+                    (settings.imageCount ?? 1) === count
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 px-1">
+              Number of images to generate per request (default). Each image is generated separately but in parallel for better performance.
             </p>
           </div>
 

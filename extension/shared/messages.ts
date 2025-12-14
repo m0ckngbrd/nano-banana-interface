@@ -19,6 +19,7 @@ export type BgRequest =
       type: "image.generate";
       prompt: string;
       settings?: GenerationSettings;
+      imageCount?: number;
     };
 
 export type BgResponse =
@@ -26,7 +27,8 @@ export type BgResponse =
   | { type: "templates.get"; templates: PromptTemplate[] }
   | { type: "page.capture"; page: { title: string; url: string; text: string; method: string } }
   | { type: "prompt.build"; prompt: string }
-  | { type: "image.generate"; imageDataUrl: string };
+  | { type: "image.generate"; imageDataUrl: string }
+  | { type: "image.generate"; imageDataUrls: string[] };
 
 export async function handleMessage(message: unknown, _sender: chrome.runtime.MessageSender): Promise<BgResponse> {
   const msg = message as BgRequest;
@@ -65,8 +67,42 @@ export async function handleMessage(message: unknown, _sender: chrome.runtime.Me
       const config = await getConfig();
       if (!config.apiKey) throw new Error("Missing API key");
       const settings = msg.settings ?? config.settings ?? DEFAULT_SETTINGS;
-      const imageDataUrl = await generateImageFromPrompt(msg.prompt, settings, config.apiKey);
-      return { type: "image.generate", imageDataUrl };
+      // Ensure imageCount is between 1 and 5
+      const imageCount = Math.max(1, Math.min(5, msg.imageCount ?? settings.imageCount ?? 1));
+      
+      if (imageCount === 1) {
+        // Single image - return single response for backward compatibility
+        const imageDataUrl = await generateImageFromPrompt(msg.prompt, settings, config.apiKey);
+        return { type: "image.generate", imageDataUrl };
+      } else {
+        // Multiple images - generate in parallel
+        const promises = Array.from({ length: imageCount }, () =>
+          generateImageFromPrompt(msg.prompt, settings, config.apiKey)
+        );
+        
+        const results = await Promise.allSettled(promises);
+        const imageDataUrls: string[] = [];
+        const errors: string[] = [];
+        
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            imageDataUrls.push(result.value);
+          } else {
+            const errorMsg = result.reason instanceof Error ? result.reason.message : String(result.reason || 'Generation failed');
+            errors.push(`Image ${index + 1}: ${errorMsg}`);
+          }
+        });
+        
+        if (imageDataUrls.length === 0) {
+          throw new Error(`All image generations failed. ${errors.join('; ')}`);
+        }
+        
+        if (errors.length > 0) {
+          console.warn('Some images failed to generate:', errors);
+        }
+        
+        return { type: "image.generate", imageDataUrls } as BgResponse;
+      }
     }
     default:
       throw new Error("Unknown message type");
