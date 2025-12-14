@@ -463,28 +463,69 @@ export const PopupApp: React.FC = () => {
           {genError && <div className="text-xs text-red-400">{genError}</div>}
         </section>
 
-        {imageDataUrl && (
+        {imageDataUrls.length > 0 && (
           <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-            <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Result</div>
-            <button
-              className="relative w-full group"
-              onClick={() => setIsImageOpen(true)}
-              title="Click to zoom"
-            >
-              <img src={imageDataUrl} className="w-full rounded-lg border border-slate-800" />
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="flex items-center gap-1 text-[11px] bg-black/60 text-white px-2 py-1 rounded-md border border-white/10">
-                  <ZoomIn size={14} />
-                  Zoom
-                </div>
-              </div>
-            </button>
-            <div className="text-xs text-amber-300 bg-amber-950/30 border border-amber-900/40 rounded-lg p-2">
-              Download this image now — <span className="text-amber-200">history isn’t saved</span> in the extension yet.
+            <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              Result{imageDataUrls.length > 1 ? ` (${imageDataUrls.length} images)` : ""}
             </div>
-            <Button onClick={handleDownload} variant="secondary" icon={<Download size={16} />} className="w-full">
-              Download
-            </Button>
+
+            {imageDataUrls.length > 1 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {imageDataUrls.map((url, index) => (
+                  <div key={index} className="relative group">
+                    <button
+                      className="relative w-full"
+                      onClick={() => {
+                        setCurrentImageIndex(index);
+                        setIsImageOpen(true);
+                      }}
+                      title="Click to zoom"
+                    >
+                      <img src={url} className="w-full rounded-lg border border-slate-800" />
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-1 text-[11px] bg-black/60 text-white px-2 py-1 rounded-md border border-white/10">
+                          <ZoomIn size={14} />
+                          Zoom
+                        </div>
+                      </div>
+                    </button>
+                    <Button
+                      onClick={() => handleDownload(index)}
+                      variant="secondary"
+                      icon={<Download size={14} />}
+                      className="w-full mt-2 text-xs"
+                    >
+                      Download {index + 1}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                <button
+                  className="relative w-full group"
+                  onClick={() => {
+                    setCurrentImageIndex(0);
+                    setIsImageOpen(true);
+                  }}
+                  title="Click to zoom"
+                >
+                  <img src={imageDataUrls[0]} className="w-full rounded-lg border border-slate-800" />
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 text-[11px] bg-black/60 text-white px-2 py-1 rounded-md border border-white/10">
+                      <ZoomIn size={14} />
+                      Zoom
+                    </div>
+                  </div>
+                </button>
+                <div className="text-xs text-amber-300 bg-amber-950/30 border border-amber-900/40 rounded-lg p-2">
+                  Download this image now — <span className="text-amber-200">history isn’t saved</span> in the extension yet.
+                </div>
+                <Button onClick={() => handleDownload(0)} variant="secondary" icon={<Download size={16} />} className="w-full">
+                  Download
+                </Button>
+              </>
+            )}
           </section>
         )}
       </main>
