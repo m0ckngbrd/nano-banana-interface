@@ -119,6 +119,9 @@ export const PopupApp: React.FC = () => {
         const defaultTemplate = t.templates.find((tmpl) => tmpl.isDefault);
         setSelectedTemplateId(defaultTemplate?.id ?? t.templates[0].id);
       }
+
+      // Automatically capture page text when popup opens
+      handleCapture();
     })().catch((e) => {
       console.error(e);
     });
@@ -227,18 +230,18 @@ export const PopupApp: React.FC = () => {
     setImageDataUrls([]);
     setCurrentImageIndex(0);
     try {
-      const res = await bg<{ type: "image.generate"; imageDataUrl?: string; imageDataUrls?: string[] }>({
+      const res = await bg<{ type: "image.generate"; imageDataUrl: string } | { type: "image.generate"; imageDataUrls: string[] }>({
         type: "image.generate",
         prompt: builtPrompt,
         settings: { ...settings, imageCount },
         imageCount,
       });
       
-      if (res.imageDataUrl) {
+      if ('imageDataUrl' in res) {
         // Single image response (backward compatibility)
         setImageDataUrl(res.imageDataUrl);
         setImageDataUrls([res.imageDataUrl]);
-      } else if (res.imageDataUrls) {
+      } else if ('imageDataUrls' in res) {
         // Multiple images response
         setImageDataUrls(res.imageDataUrls);
         if (res.imageDataUrls.length === 1) {

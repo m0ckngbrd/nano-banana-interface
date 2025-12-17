@@ -1,10 +1,10 @@
 # Nano Banana Interface (Chrome Extension)
 
 This repo builds a **Chrome Manifest V3 extension** that:
-- Captures the current tab’s text content
+- Automatically captures the current tab's text content when opened
 - Wraps it with a selected **prompt template**
 - Submits the prompt to Nano Banana (via `@google/genai`)
-- Shows the resulting image and allows download
+- Shows the resulting image(s) and allows download
 
 ## Develop
 
@@ -18,5 +18,11 @@ This repo builds a **Chrome Manifest V3 extension** that:
    - Click **Load unpacked**
    - Select the `dist/` folder
 
-## Notes
-- Capturing text from `file://` PDFs requires enabling **“Allow access to file URLs”** for the extension in `chrome://extensions`.
+## Setup
+
+### API Key
+You **must add your own Google Generative AI API key** to use this extension:
+1. Open the extension popup
+2. Click the **Settings** icon (gear icon)
+3. Enter your API key in the "API Key" field
+4. The key will be saved locally in your browser
