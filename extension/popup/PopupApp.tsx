@@ -22,9 +22,8 @@ const ImageLightbox: React.FC<{
   currentIndex: number;
   onClose: () => void;
   onDownload: (index: number) => void;
-  onOpenInTab: (index: number) => void;
   onNavigate: (index: number) => void;
-}> = ({ imageDataUrls, currentIndex, onClose, onDownload, onOpenInTab, onNavigate }) => {
+}> = ({ imageDataUrls, currentIndex, onClose, onDownload, onNavigate }) => {
   const hasMultiple = imageDataUrls.length > 1;
   const canGoPrev = hasMultiple && currentIndex > 0;
   const canGoNext = hasMultiple && currentIndex < imageDataUrls.length - 1;
@@ -37,9 +36,6 @@ const ImageLightbox: React.FC<{
             Preview {hasMultiple && `(${currentIndex + 1}/${imageDataUrls.length})`}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="secondary" className="text-sm" onClick={() => onOpenInTab(currentIndex)} icon={<ExternalLink size={16} />}>
-              Open tab
-            </Button>
             <Button variant="secondary" className="text-sm" onClick={() => onDownload(currentIndex)} icon={<Download size={16} />}>
               Download
             </Button>
@@ -298,112 +294,6 @@ export const PopupApp: React.FC = () => {
       <main className="flex-1 overflow-auto p-3 space-y-3">
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Capture</div>
-            <Button
-              variant="secondary"
-              onClick={handleCapture}
-              isLoading={isCapturing}
-              icon={!isCapturing ? <RefreshCcw size={16} /> : undefined}
-              className="text-sm"
-            >
-              Capture page text
-            </Button>
-          </div>
-          {captureError && (
-            <div className="space-y-2">
-              <div className="text-xs text-red-400">{captureError}</div>
-              {showPasteMode && (
-                <div className="text-xs text-slate-400">
-                  <Button
-                    variant="secondary"
-                    onClick={handlePasteFromClipboard}
-                    icon={<Clipboard size={14} />}
-                    className="text-xs w-full mb-2"
-                  >
-                    Paste from clipboard
-                  </Button>
-                  <div className="text-[11px] text-slate-500 mb-1">Or paste text manually:</div>
-                  <textarea
-                    className="w-full h-24 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Paste your text here..."
-                    value={pasteText}
-                    onChange={(e) => setPasteText(e.target.value)}
-                  />
-                  <Button
-                    onClick={handleManualPaste}
-                    disabled={!pasteText.trim()}
-                    className="text-xs w-full mt-2"
-                  >
-                    Use pasted text
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-          {captured && (
-            <div className="text-xs text-slate-400">
-              <div className="truncate">
-                <span className="text-slate-300">Title:</span> {captured.title || "(no title)"}
-              </div>
-              <div className="truncate">
-                <span className="text-slate-300">URL:</span> {captured.url}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-300">Method:</span> 
-                <span className="flex items-center gap-1">
-                  {captured.method}
-                  {captured.method === "pdf" && (
-                    <span className="inline-flex items-center gap-1 text-[10px] bg-amber-950/50 text-amber-300 px-1.5 py-0.5 rounded border border-amber-900/50">
-                      <FileText size={10} />
-                      PDF
-                    </span>
-                  )}
-                </span>
-              </div>
-              <button
-                className="mt-2 text-indigo-400 hover:text-indigo-300 text-xs"
-                onClick={() => setShowCapturePreview((v) => !v)}
-              >
-                {showCapturePreview ? "Hide" : "Show"} captured text
-              </button>
-              {showCapturePreview && (
-                <textarea
-                  className="mt-2 w-full h-28 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={captured.text}
-                  onChange={(e) => setCaptured({ ...captured, text: e.target.value })}
-                />
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Template</div>
-            <Button
-              variant="secondary"
-              className="text-sm"
-              onClick={() => setIsTemplateModalOpen(true)}
-            >
-              Edit templates
-            </Button>
-          </div>
-          <select
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
-            value={selectedTemplateId}
-            onChange={(e) => setSelectedTemplateId(e.target.value)}
-          >
-            {templates.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-          {selectedTemplate && <div className="text-xs text-slate-500 line-clamp-3">{selectedTemplate.content}</div>}
-        </section>
-
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
-          <div className="flex items-center justify-between">
             <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Prompt</div>
             {builtPrompt.trim() && (
               <div className="flex items-center gap-1 text-xs text-emerald-400 font-mono bg-emerald-950/30 px-2 py-1 rounded border border-emerald-900/50">
@@ -522,7 +412,7 @@ export const PopupApp: React.FC = () => {
                   </div>
                 </button>
                 <div className="text-xs text-amber-300 bg-amber-950/30 border border-amber-900/40 rounded-lg p-2">
-                  Download this image now — <span className="text-amber-200">history isn’t saved</span> in the extension yet.
+                  Download this image now — <span className="text-amber-200">history isn't saved</span> in the extension yet.
                 </div>
                 <Button onClick={() => handleDownload(0)} variant="secondary" icon={<Download size={16} />} className="w-full">
                   Download
@@ -531,6 +421,112 @@ export const PopupApp: React.FC = () => {
             )}
           </section>
         )}
+
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Template</div>
+            <Button
+              variant="secondary"
+              className="text-sm"
+              onClick={() => setIsTemplateModalOpen(true)}
+            >
+              Edit templates
+            </Button>
+          </div>
+          <select
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
+            value={selectedTemplateId}
+            onChange={(e) => setSelectedTemplateId(e.target.value)}
+          >
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          {selectedTemplate && <div className="text-xs text-slate-500 line-clamp-3">{selectedTemplate.content}</div>}
+        </section>
+
+        <section className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Capture</div>
+            <Button
+              variant="secondary"
+              onClick={handleCapture}
+              isLoading={isCapturing}
+              icon={!isCapturing ? <RefreshCcw size={16} /> : undefined}
+              className="text-sm"
+            >
+              Capture page text
+            </Button>
+          </div>
+          {captureError && (
+            <div className="space-y-2">
+              <div className="text-xs text-red-400">{captureError}</div>
+              {showPasteMode && (
+                <div className="text-xs text-slate-400">
+                  <Button
+                    variant="secondary"
+                    onClick={handlePasteFromClipboard}
+                    icon={<Clipboard size={14} />}
+                    className="text-xs w-full mb-2"
+                  >
+                    Paste from clipboard
+                  </Button>
+                  <div className="text-[11px] text-slate-500 mb-1">Or paste text manually:</div>
+                  <textarea
+                    className="w-full h-24 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Paste your text here..."
+                    value={pasteText}
+                    onChange={(e) => setPasteText(e.target.value)}
+                  />
+                  <Button
+                    onClick={handleManualPaste}
+                    disabled={!pasteText.trim()}
+                    className="text-xs w-full mt-2"
+                  >
+                    Use pasted text
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          {captured && (
+            <div className="text-xs text-slate-400">
+              <div className="truncate">
+                <span className="text-slate-300">Title:</span> {captured.title || "(no title)"}
+              </div>
+              <div className="truncate">
+                <span className="text-slate-300">URL:</span> {captured.url}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-300">Method:</span> 
+                <span className="flex items-center gap-1">
+                  {captured.method}
+                  {captured.method === "pdf" && (
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-amber-950/50 text-amber-300 px-1.5 py-0.5 rounded border border-amber-900/50">
+                      <FileText size={10} />
+                      PDF
+                    </span>
+                  )}
+                </span>
+              </div>
+              <button
+                className="mt-2 text-indigo-400 hover:text-indigo-300 text-xs"
+                onClick={() => setShowCapturePreview((v) => !v)}
+              >
+                {showCapturePreview ? "Hide" : "Show"} captured text
+              </button>
+              {showCapturePreview && (
+                <textarea
+                  className="mt-2 w-full h-28 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={captured.text}
+                  onChange={(e) => setCaptured({ ...captured, text: e.target.value })}
+                />
+              )}
+            </div>
+          )}
+        </section>
       </main>
 
       <TemplateManager
@@ -585,7 +581,6 @@ export const PopupApp: React.FC = () => {
           currentIndex={currentImageIndex}
           onClose={() => setIsImageOpen(false)}
           onDownload={handleDownload}
-          onOpenInTab={(index) => chrome.tabs.create({ url: imageDataUrls[index] })}
           onNavigate={setCurrentImageIndex}
         />
       )}
