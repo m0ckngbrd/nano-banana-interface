@@ -7,15 +7,16 @@ import { Button } from './components/Button';
 import { HistoryItem, PromptTemplate, GenerationSettings } from './types';
 import { generateImageFromPrompt, MODEL_NAME } from './services/geminiService';
 import { imageStorage } from './services/imageStorageService';
-import { getActivePageContext } from './services/pageContextService';
+import { captureActivePageContext, PageCaptureError, PageCaptureResult } from './services/pageContextService';
 import { STORAGE_KEYS, storage } from './services/storageService';
 import { hasTemplatePlaceholders, resolveTemplatePrompt } from './services/templateService';
-import { Bookmark, Download, Menu, Plus, Send, Settings, Sparkles } from 'lucide-react';
+import { Bookmark, Download, Menu, Plus, RefreshCw, Send, Settings, Sparkles } from 'lucide-react';
 
 const DEFAULT_SETTINGS: GenerationSettings = {
   aspectRatio: '1:1',
   resolution: '1K',
   temperature: 1.0,
+  defaultTemplateId: 'default_detailed_infographic',
 };
 
 const DEFAULT_TEMPLATES: PromptTemplate[] = [
@@ -92,6 +93,25 @@ const createResolvedPromptPreview = (resolvedPrompt: string, rawPrompt: string):
   return `${resolvedPrompt.slice(0, MAX_RESOLVED_PROMPT_PREVIEW_LENGTH)}...`;
 };
 
+const getCaptureFeedback = (
+  result: PageCaptureResult,
+  mode: 'automatic' | 'manual',
+): { tone: 'success' | 'warning'; message: string } => {
+  const label = mode === 'automatic' ? 'Page context is ready.' : 'Captured text from the current page.';
+
+  if (result.truncated) {
+    return {
+      tone: 'warning',
+      message: `${label} Page text was truncated to fit the placeholder limit.`,
+    };
+  }
+
+  return {
+    tone: 'success',
+    message: label,
+  };
+};
+
 const serializeHistory = (items: HistoryItem[]): HistoryItem[] =>
   items.map(({ imageUrl, ...item }) => item);
 
@@ -127,6 +147,8 @@ const createPreviewImage = async (imageUrl: string): Promise<string> => {
 
 const App: React.FC = () => {
   const loadingImageIdsRef = useRef<Set<string>>(new Set());
+  const hasAutoCapturedRef = useRef(false);
+  const lastAppliedTemplateContentRef = useRef('');
   const [isApiKeyReady, setIsApiKeyReady] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [apiKeyMessage, setApiKeyMessage] = useState<string | null>(null);
@@ -134,6 +156,9 @@ const App: React.FC = () => {
   const [isHydrated, setIsHydrated] = useState(false);
   const [storageError, setStorageError] = useState<string | null>(null);
   const [pageContextError, setPageContextError] = useState<string | null>(null);
+  const [pageCaptureStatus, setPageCaptureStatus] = useState<'idle' | 'capturing' | 'ready' | 'error'>('idle');
+  const [pageCaptureFeedback, setPageCaptureFeedback] = useState<{ tone: 'success' | 'warning'; message: string } | null>(null);
+  const [capturedPageContext, setCapturedPageContext] = useState<PageCaptureResult | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [settings, setSettings] = useState<GenerationSettings>(DEFAULT_SETTINGS);
@@ -241,6 +266,43 @@ const App: React.FC = () => {
 
   const activeItem = history.find(h => h.id === currentItemId) || null;
   const isGenerating = history.some((item) => item.status === 'generating');
+  const defaultTemplate = templates.find((template) => template.id === settings.defaultTemplateId) || null;
+
+  const applyPromptValue = (value: string) => {
+    lastAppliedTemplateContentRef.current = value;
+    setCurrentPrompt(value);
+  };
+
+  const capturePageContext = async (mode: 'automatic' | 'manual'): Promise<PageCaptureResult | null> => {
+    setPageCaptureStatus('capturing');
+    setPageContextError(null);
+
+    try {
+      const result = await captureActivePageContext();
+      setCapturedPageContext(result);
+      setPageCaptureStatus('ready');
+      setPageCaptureFeedback(getCaptureFeedback(result, mode));
+      return result;
+    } catch (error) {
+      console.error('Page capture failed:', error);
+      setCapturedPageContext(null);
+      setPageCaptureStatus('error');
+      setPageCaptureFeedback(null);
+
+      if (error instanceof PageCaptureError) {
+        if (mode === 'automatic' && error.code === 'NOT_EXTENSION') {
+          setPageCaptureStatus('idle');
+          return null;
+        }
+
+        setPageContextError(error.message);
+        return null;
+      }
+
+      setPageContextError('Unable to capture text from the current page.');
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (!activeItem || activeItem.status !== 'success' || activeItem.imageUrl || !activeItem.imageStorageKey) {
@@ -286,6 +348,30 @@ const App: React.FC = () => {
     setIsApiKeyReady(true);
   };
 
+  useEffect(() => {
+    if (!isHydrated || hasAutoCapturedRef.current) {
+      return;
+    }
+
+    hasAutoCapturedRef.current = true;
+    void capturePageContext('automatic');
+  }, [isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated || currentItemId) {
+      return;
+    }
+
+    const nextPrompt = defaultTemplate?.content || '';
+    if (!nextPrompt) {
+      return;
+    }
+
+    if (!currentPrompt || currentPrompt === lastAppliedTemplateContentRef.current) {
+      applyPromptValue(nextPrompt);
+    }
+  }, [currentPrompt, currentItemId, defaultTemplate, isHydrated]);
+
   const handleApiKeyInvalid = async (promptText: string, failedItemId: string) => {
     try {
       await storage.removeItem(STORAGE_KEYS.apiKey);
@@ -313,8 +399,12 @@ const App: React.FC = () => {
 
     if (hasTemplatePlaceholders(rawPrompt)) {
       try {
-        const pageContext = await getActivePageContext();
-        resolvedPrompt = resolveTemplatePrompt(rawPrompt, pageContext).trim();
+        const pageContextResult = capturedPageContext ?? await capturePageContext('manual');
+        if (!pageContextResult) {
+          return;
+        }
+
+        resolvedPrompt = resolveTemplatePrompt(rawPrompt, pageContextResult.context).trim();
       } catch (error) {
         console.error('Failed to resolve template placeholders:', error);
         setPageContextError(error instanceof Error ? error.message : 'Unable to resolve placeholders from the current page.');
@@ -379,10 +469,15 @@ const App: React.FC = () => {
 
   const handleTemplateRemove = (id: string) => {
     setTemplates(prev => prev.filter(t => t.id !== id));
+
+    if (settings.defaultTemplateId === id) {
+      setSettings((previous) => ({ ...previous, defaultTemplateId: DEFAULT_SETTINGS.defaultTemplateId }));
+    }
   };
 
   const handleUseTemplate = (content: string) => {
-    setCurrentPrompt(content);
+    applyPromptValue(content);
+    setPageContextError(null);
   };
 
   const handleDownload = (imageUrl: string, id: string) => {
@@ -396,8 +491,9 @@ const App: React.FC = () => {
 
   const handleNewChat = () => {
     setCurrentItemId(null);
-    setCurrentPrompt('');
+    applyPromptValue(defaultTemplate?.content || '');
     setIsPromptExpanded(false);
+    setPageContextError(null);
   };
 
   const handleClearHistory = async () => {
@@ -503,6 +599,18 @@ const App: React.FC = () => {
 
         {/* Viewport Area */}
         <main className="flex-1 overflow-hidden relative flex flex-col items-center justify-center p-4">
+          {pageCaptureFeedback && (
+            <div
+              className={`w-full max-w-4xl mb-4 rounded-xl border px-4 py-3 text-sm ${
+                pageCaptureFeedback.tone === 'warning'
+                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-100'
+                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'
+              }`}
+            >
+              {pageCaptureFeedback.message}
+            </div>
+          )}
+
           {pageContextError && (
             <div className="w-full max-w-4xl mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
               {pageContextError}
@@ -622,11 +730,31 @@ const App: React.FC = () => {
 
         {/* Input Area */}
         <div className="p-4 bg-slate-900 border-t border-slate-800 shrink-0 z-20">
+          <div className="max-w-4xl mx-auto flex justify-between items-center mb-3 gap-3">
+            <div className="text-xs text-slate-500 font-medium">
+              {pageCaptureStatus === 'capturing' && 'Capturing page text...'}
+              {pageCaptureStatus === 'ready' && capturedPageContext && `Captured ${capturedPageContext.context.pageText.length.toLocaleString()} chars from page`}
+              {pageCaptureStatus === 'error' && 'Page capture needs attention'}
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => void capturePageContext('manual')}
+              icon={<RefreshCw size={16} />}
+              isLoading={pageCaptureStatus === 'capturing'}
+              className="text-sm whitespace-nowrap"
+            >
+              Test Capture
+            </Button>
+          </div>
+
           <div className="max-w-4xl mx-auto flex gap-3 items-end">
             <div className="relative flex-1">
               <textarea
                 value={currentPrompt}
-                onChange={(e) => setCurrentPrompt(e.target.value)}
+                onChange={(e) => {
+                  setCurrentPrompt(e.target.value);
+                  setPageContextError(null);
+                }}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -669,6 +797,7 @@ const App: React.FC = () => {
         onUpdate={setSettings}
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        templates={templates}
         apiKeyLabel={maskApiKey(apiKey)}
         onManageApiKey={() => {
           setIsSettingsModalOpen(false);

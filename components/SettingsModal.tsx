@@ -1,5 +1,5 @@
 import React from 'react';
-import { GenerationSettings } from '../types';
+import { GenerationSettings, PromptTemplate } from '../types';
 import { X, RotateCcw, Settings as SettingsIcon, Monitor, Box, Thermometer, DollarSign, KeyRound } from 'lucide-react';
 import { Button } from './Button';
 
@@ -8,6 +8,7 @@ interface SettingsModalProps {
   onUpdate: (settings: GenerationSettings) => void;
   isOpen: boolean;
   onClose: () => void;
+  templates: PromptTemplate[];
   apiKeyLabel: string;
   onManageApiKey: () => void;
 }
@@ -16,6 +17,7 @@ const DEFAULT_SETTINGS: GenerationSettings = {
   aspectRatio: '1:1',
   resolution: '1K',
   temperature: 1.0,
+  defaultTemplateId: 'default_detailed_infographic',
 };
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -23,6 +25,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onUpdate,
   isOpen,
   onClose,
+  templates,
   apiKeyLabel,
   onManageApiKey,
 }) => {
@@ -87,6 +90,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Button variant="secondary" onClick={onManageApiKey} className="w-full">
               Replace API Key
             </Button>
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 uppercase tracking-wider">
+              Default Template
+            </label>
+            <select
+              value={settings.defaultTemplateId || ''}
+              onChange={(event) =>
+                onUpdate({
+                  ...settings,
+                  defaultTemplateId: event.target.value || null,
+                })
+              }
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">None</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 px-1">
+              The selected template is preloaded into the prompt when the extension opens or when you start a new chat.
+            </p>
           </div>
           
           {/* Aspect Ratio */}
