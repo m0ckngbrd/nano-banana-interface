@@ -1,22 +1,81 @@
 import { GoogleGenAI } from "@google/genai";
 import { GenerationSettings } from "../types";
 
-// The model mapping for 'Gemini Nano Banana Pro' or 'gemini pro image' is 'gemini-3-pro-image-preview'
 export const MODEL_NAME = 'gemini-3-pro-image-preview';
 
-export const generateImageFromPrompt = async (prompt: string, settings: GenerationSettings): Promise<string> => {
-  // Get API key from environment (.env.local) or fall back to what's set by Google AI Studio
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.API_KEY;
-  
-  // CRITICAL: Always create a new instance to pick up the latest selected API Key from the environment
-  const ai = new GoogleGenAI({ apiKey });
+const API_KEY_VALIDATION_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+const isApiKeyError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('api key') ||
+    message.includes('permission denied') ||
+    message.includes('permission_denied') ||
+    message.includes('unauthenticated') ||
+    message.includes('invalid argument')
+  );
+};
+
+const normalizeGeminiError = (error: unknown): Error => {
+  if (isApiKeyError(error)) {
+    return new Error('API_KEY_ERROR');
+  }
+
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error('Failed to communicate with Gemini.');
+};
+
+export const validateApiKey = async (apiKey: string): Promise<void> => {
+  const trimmedKey = apiKey.trim();
+  if (!trimmedKey) {
+    throw new Error('API_KEY_MISSING');
+  }
+
+  const response = await fetch(`${API_KEY_VALIDATION_URL}?key=${encodeURIComponent(trimmedKey)}`);
+  if (response.ok) {
+    return;
+  }
+
+  let details = 'Unable to validate API key.';
+
+  try {
+    const payload = await response.json();
+    details = payload?.error?.message || details;
+  } catch {
+    // Ignore JSON parsing issues and fall back to the default message.
+  }
+
+  if (response.status === 400 || response.status === 401 || response.status === 403) {
+    throw new Error('API_KEY_ERROR');
+  }
+
+  throw new Error(details);
+};
+
+export const generateImageFromPrompt = async (
+  apiKey: string,
+  prompt: string,
+  settings: GenerationSettings,
+): Promise<string> => {
+  const trimmedKey = apiKey.trim();
+  if (!trimmedKey) {
+    throw new Error('API_KEY_MISSING');
+  }
+
+  const ai = new GoogleGenAI({ apiKey: trimmedKey });
 
   try {
     const imageConfig: any = {
-      imageSize: settings.resolution, // 1K, 2K, 4K available for this model
+      imageSize: settings.resolution,
     };
 
-    // Only add aspect ratio if it's not Auto
     if (settings.aspectRatio !== 'Auto') {
       imageConfig.aspectRatio = settings.aspectRatio;
     }
@@ -36,7 +95,6 @@ export const generateImageFromPrompt = async (prompt: string, settings: Generati
       },
     });
 
-    // Iterate through parts to find the image
     const candidates = response.candidates;
     if (!candidates || candidates.length === 0) {
       throw new Error("No candidates returned from Gemini.");
@@ -48,19 +106,14 @@ export const generateImageFromPrompt = async (prompt: string, settings: Generati
     for (const part of parts) {
       if (part.inlineData && part.inlineData.data) {
         base64Image = part.inlineData.data;
-        // Construct the data URL
         return `data:${part.inlineData.mimeType || 'image/png'};base64,${base64Image}`;
       }
     }
 
     throw new Error("No image data found in response.");
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Gemini Image Generation Error:", error);
-    // Check for the specific error regarding API key selection or missing entity
-    if (error.message && error.message.includes("Requested entity was not found")) {
-        throw new Error("API_KEY_ERROR");
-    }
-    throw error;
+    throw normalizeGeminiError(error);
   }
 };

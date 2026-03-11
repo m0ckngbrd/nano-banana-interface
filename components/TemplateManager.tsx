@@ -54,6 +54,10 @@ export const TemplateManager: React.FC<TemplateManagerProps> = ({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800/70 px-4 py-3 text-sm text-slate-300">
+            Placeholders like <code className="text-indigo-300">{'{{title}}'}</code>, <code className="text-indigo-300">{'{{url}}'}</code>, and <code className="text-indigo-300">{'{{pageText}}'}</code> are filled from the current browser tab when you generate.
+          </div>
+
           {!isCreating && (
             <Button 
               onClick={() => setIsCreating(true)} 
@@ -66,7 +70,7 @@ export const TemplateManager: React.FC<TemplateManagerProps> = ({
           )}
 
           {isCreating && (
-            <div className="bg-slate-800 rounded-xl p-4 mb-6 border border-indigo-500/50 animation-fade-in">
+            <div className="bg-slate-800 rounded-xl p-4 mb-6 border border-indigo-500/50">
               <h3 className="text-sm font-semibold text-indigo-300 mb-3 uppercase tracking-wider">New Template</h3>
               <input
                 type="text"
@@ -107,6 +111,11 @@ export const TemplateManager: React.FC<TemplateManagerProps> = ({
                    </button>
                 </div>
                 <h3 className="font-bold text-slate-200 mb-2 pr-8">{template.name}</h3>
+                {template.isDefault && (
+                  <div className="mb-2 inline-flex rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-indigo-200">
+                    Default
+                  </div>
+                )}
                 <p className="text-sm text-slate-400 line-clamp-3 mb-4 h-14">{template.content}</p>
                 <Button 
                   className="w-full text-sm" 

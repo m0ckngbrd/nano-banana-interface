@@ -2,7 +2,10 @@ export interface HistoryItem {
   id: string;
   timestamp: number;
   prompt: string;
+  resolvedPrompt?: string;
   imageUrl?: string;
+  previewImageUrl?: string;
+  imageStorageKey?: string;
   status: 'waiting' | 'generating' | 'success' | 'error';
   errorMessage?: string;
 }
@@ -11,6 +14,7 @@ export interface PromptTemplate {
   id: string;
   name: string;
   content: string;
+  isDefault?: boolean;
 }
 
 export interface GenerationSettings {

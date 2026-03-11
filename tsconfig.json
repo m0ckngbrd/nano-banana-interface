@@ -11,6 +11,7 @@
     ],
     "skipLibCheck": true,
     "types": [
+      "chrome",
       "node"
     ],
     "moduleResolution": "bundler",

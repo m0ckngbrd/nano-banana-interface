@@ -1,6 +1,6 @@
 import React from 'react';
 import { GenerationSettings } from '../types';
-import { X, RotateCcw, Settings as SettingsIcon, Monitor, Box, Thermometer, DollarSign } from 'lucide-react';
+import { X, RotateCcw, Settings as SettingsIcon, Monitor, Box, Thermometer, DollarSign, KeyRound } from 'lucide-react';
 import { Button } from './Button';
 
 interface SettingsModalProps {
@@ -8,6 +8,8 @@ interface SettingsModalProps {
   onUpdate: (settings: GenerationSettings) => void;
   isOpen: boolean;
   onClose: () => void;
+  apiKeyLabel: string;
+  onManageApiKey: () => void;
 }
 
 const DEFAULT_SETTINGS: GenerationSettings = {
@@ -20,7 +22,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdate,
   isOpen,
-  onClose
+  onClose,
+  apiKeyLabel,
+  onManageApiKey,
 }) => {
   if (!isOpen) return null;
 
@@ -55,7 +59,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[85vh] transition-transform duration-200">
         
         {/* Header */}
         <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50 rounded-t-2xl shrink-0">
@@ -69,7 +73,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-8 overflow-y-auto custom-scrollbar">
+        <div className="p-6 space-y-8 overflow-y-auto">
+          <div className="space-y-3">
+            <div className="flex justify-between items-center gap-3">
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 uppercase tracking-wider">
+                <KeyRound size={16} className="text-indigo-400" />
+                API Key
+              </label>
+              <span className="text-xs font-mono bg-slate-800 px-2 py-1 rounded text-slate-300 border border-slate-700">
+                {apiKeyLabel}
+              </span>
+            </div>
+            <Button variant="secondary" onClick={onManageApiKey} className="w-full">
+              Replace API Key
+            </Button>
+          </div>
           
           {/* Aspect Ratio */}
           <div className="space-y-3">
@@ -85,7 +103,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all ${
                     settings.aspectRatio === ratio.value
                       ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.3)]'
-                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750 hover:border-slate-600'
+                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700/80 hover:border-slate-600'
                   }`}
                   title={ratio.label}
                 >

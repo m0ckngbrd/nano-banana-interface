@@ -1,68 +1,84 @@
-// Detect if running in AI Studio or locally
-export const isRunningInAIStudio = (): boolean => {
-  return typeof window !== 'undefined' && 'aistudio' in window;
-};
+export const STORAGE_KEYS = {
+  apiKey: 'banana_pro_api_key',
+  history: 'banana_pro_history',
+  templates: 'banana_pro_templates',
+  settings: 'banana_pro_settings',
+} as const;
 
-// Storage interface
 interface StorageService {
   getItem: (key: string) => Promise<string | null>;
   setItem: (key: string, value: string) => Promise<void>;
+  removeItem: (key: string) => Promise<void>;
 }
 
-// Browser localStorage implementation
+const hasChromeStorage = (): boolean =>
+  typeof chrome !== 'undefined' &&
+  Boolean(chrome.storage?.local);
+
 class LocalStorageService implements StorageService {
   async getItem(key: string): Promise<string | null> {
-    return localStorage.getItem(key);
+    try {
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.error('Error reading from local storage:', error);
+      return null;
+    }
   }
 
   async setItem(key: string, value: string): Promise<void> {
     localStorage.setItem(key, value);
   }
+
+  async removeItem(key: string): Promise<void> {
+    localStorage.removeItem(key);
+  }
 }
 
-// File-based storage for local development
-class FileStorageService implements StorageService {
-  private baseUrl = 'http://localhost:3001/api/storage';
-
+class ChromeStorageService implements StorageService {
   async getItem(key: string): Promise<string | null> {
-    try {
-      const response = await fetch(`${this.baseUrl}/${key}`);
-      if (response.status === 404) {
-        return null;
-      }
-      if (!response.ok) {
-        throw new Error(`Failed to get item: ${response.statusText}`);
-      }
-      const data = await response.json();
-      return data.value;
-    } catch (error) {
-      console.error('Error getting item from file storage:', error);
-      // Fallback to localStorage if backend is not available
-      return localStorage.getItem(key);
-    }
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.get(key, (items) => {
+        const runtimeError = chrome.runtime?.lastError;
+        if (runtimeError) {
+          reject(new Error(runtimeError.message));
+          return;
+        }
+
+        const value = items[key];
+        resolve(typeof value === 'string' ? value : null);
+      });
+    });
   }
 
   async setItem(key: string, value: string): Promise<void> {
-    try {
-      const response = await fetch(`${this.baseUrl}/${key}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ value }),
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.set({ [key]: value }, () => {
+        const runtimeError = chrome.runtime?.lastError;
+        if (runtimeError) {
+          reject(new Error(runtimeError.message));
+          return;
+        }
+
+        resolve();
       });
-      if (!response.ok) {
-        throw new Error(`Failed to set item: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error('Error setting item in file storage:', error);
-      // Fallback to localStorage if backend is not available
-      localStorage.setItem(key, value);
-    }
+    });
+  }
+
+  async removeItem(key: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.remove(key, () => {
+        const runtimeError = chrome.runtime?.lastError;
+        if (runtimeError) {
+          reject(new Error(runtimeError.message));
+          return;
+        }
+
+        resolve();
+      });
+    });
   }
 }
 
-// Export the appropriate storage service based on environment
-export const storage: StorageService = isRunningInAIStudio()
-  ? new LocalStorageService()
-  : new FileStorageService();
+export const storage: StorageService = hasChromeStorage()
+  ? new ChromeStorageService()
+  : new LocalStorageService();

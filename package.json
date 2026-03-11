@@ -1,26 +1,27 @@
 {
   "name": "banana-pro-vision",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:full": "npm run dev:storage & npm run dev",
-    "dev:storage": "node server/storage-server.js",
-    "build": "vite build",
+    "generate:icons": "node scripts/generate-icons.mjs",
+    "build": "npm run generate:icons && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.1",
     "@google/genai": "^1.31.0",
-    "cors": "^2.8.5",
-    "express": "^4.18.2",
     "lucide-react": "^0.556.0",
+    "react": "^19.2.1",
     "react-dom": "^19.2.1"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
+    "@types/chrome": "^0.1.37",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "pngjs": "^7.0.0",
+    "tailwindcss": "^4.2.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

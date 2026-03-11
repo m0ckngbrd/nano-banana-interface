@@ -2,28 +2,35 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Run the standalone extension app
 
-This contains everything you need to run your app locally.
+This project builds as a Chrome/Edge Manifest V3 extension with a side panel UI.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1h3Qlh7xtZ_LqBr-t4KrE8jzHXTew9jL5
-
-## Run Locally
+## Build The Extension
 
 **Prerequisites:**  Node.js
 
-
 1. Install dependencies:
    `npm install`
-2. Set the `VITE_GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev:full`
-   
-   Or run components separately:
-   - Storage server: `npm run dev:storage`
-   - Frontend: `npm run dev`
+2. Build the extension:
+   `npm run build`
+3. In Chrome or Edge, open the extensions page, enable Developer Mode, choose `Load unpacked`, and select the generated `dist/` folder.
 
 **Storage:**
-- In AI Studio: Uses browser localStorage
-- Locally: Uses file-based storage (data stored in `server/data/`)
-- The app automatically detects the environment and uses the appropriate storage method
+- The app stores your Gemini API key, history, templates, and settings locally.
+- Structured app state is saved in `chrome.storage.local`.
+- Full generated images are saved in IndexedDB to avoid extension storage quota pressure.
+
+## Local Development
+
+- `npm run dev` still launches the UI in a normal browser tab for faster iteration.
+- In Vite dev mode, the app falls back to browser `localStorage` for key/value persistence and local storage for generated image blobs.
+- Extension-only behavior such as the side panel and `chrome.storage.local` should be validated from the built `dist/` package.
+
+## Manual Verification
+
+1. Build the extension and load `dist/` unpacked in Chrome or Edge.
+2. Click the extension action and confirm the side panel opens.
+3. Enter a valid Gemini API key and verify the app unlocks and shows only a masked key in the UI.
+4. Generate an image, reload the browser, and confirm history, settings, templates, and the selected image still restore.
+5. Open the settings modal, replace the API key, and confirm the new key is required for later generation requests.
